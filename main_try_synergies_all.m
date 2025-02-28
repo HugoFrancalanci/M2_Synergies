@@ -201,7 +201,7 @@ end
 % Paramètres NNMF
 max_synergies = min(10, nb_muscles);
 VAF_threshold = 0.90;        % Seuil pour le VAF global
-VAF_m_threshold = 0.90;      % Seuil pour le VAF musculaire
+VAF_m_threshold = 0.80;      % Seuil pour le VAF musculaire
 VAF_values = zeros(1, max_synergies);        % Stocker le VAF général
 VAF_m_values = zeros(nb_muscles, max_synergies); % Stocker les VAF musculaires
 optimal_synergies = max_synergies;
@@ -251,7 +251,7 @@ hold on;
 for m = 1:nb_muscles
     plot(1:max_synergies, VAF_m_values(m, :) * 100, '-o', 'LineWidth', 1.5);
 end
-yline(VAF_m_threshold * 100, 'r--', 'Seuil VAF musculaire 90%');
+yline(VAF_m_threshold * 100, 'r--', 'Seuil VAF musculaire 80%');
 xlabel('Nombre de synergies');
 ylabel('VAF (%)');
 title('VAF musculaire pour chaque muscle');
