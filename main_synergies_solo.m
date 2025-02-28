@@ -197,7 +197,7 @@ optimal_synergies = max_synergies;       % Valeur par défaut si le seuil n'est 
 foundOptimal = false;                   % Indique si le seuil a été dépassé pour la première fois
 
 % Paramètres pour le calcul du VAF musculaire
-VAF_m_threshold = 0.90;  % Seuil individuel pour chaque muscle
+VAF_m_threshold = 0.80;  % Seuil individuel pour chaque muscle
 VAF_m_values = zeros(nb_muscles, max_synergies);  % Stocker les VAF individuels
 
 % Boucle pour la décomposition NNMF et le calcul du VAF
@@ -243,7 +243,7 @@ hold on;
 for m = 1:nb_muscles
     plot(1:max_synergies, VAF_m_values(m, :) * 100, '-o', 'LineWidth', 1.5);
 end
-yline(VAF_m_threshold * 100, 'r--', 'Seuil VAF musculaire 90%');
+yline(VAF_m_threshold * 100, 'r--', 'Seuil VAF musculaire 80%');
 xlabel('Nombre de synergies');
 ylabel('VAF (%)');
 title('Courbe de VAF musculaire pour chaque muscle');
