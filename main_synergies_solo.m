@@ -106,6 +106,10 @@ VAF_values = zeros(1, max_synergies);   % Pour stocker le VAF calculé pour chaq
 optimal_synergies = max_synergies;       % Valeur par défaut si le seuil n'est jamais atteint
 foundOptimal = false;                   % Indique si le seuil a été dépassé pour la première fois
 
+% Paramètres pour le calcul du VAF musculaire
+VAF_m_threshold = 0.90;  % Seuil individuel pour chaque muscle
+VAF_m_values = zeros(nb_muscles, max_synergies);  % Stocker les VAF individuels
+
 % Boucle pour la décomposition NNMF et le calcul du VAF
 for s = 1:max_synergies
     % Décomposition NNMF pour s synergies
@@ -114,29 +118,48 @@ for s = 1:max_synergies
     % Reconstruction du signal
     X_reconstructed = W * H;
     
-    % Calcul du VAF : Variance Accounted For
+    % Calcul du VAF général
     VAF_values(s) = 1 - (sum(sum((data_matrix - X_reconstructed).^2)) / sum(sum(data_matrix.^2)));
+
+    % Calcul du VAF musculaire pour chaque muscle
+    for m = 1:nb_muscles
+        VAF_m_values(m, s) = 1 - (sum((data_matrix(m, :) - X_reconstructed(m, :)).^2) / sum(data_matrix(m, :).^2));
+    end
     
-    % Si le VAF dépasse le seuil et que c'est la première fois, mémoriser ce nombre de synergies
-    if (VAF_values(s) >= VAF_threshold) && (~foundOptimal)
+    % Vérification du seuil VAF global + VAF musculaire
+    if (VAF_values(s) >= VAF_threshold) && all(VAF_m_values(:, s) >= VAF_m_threshold) && (~foundOptimal)
         optimal_synergies = s;
         foundOptimal = true;
     end
 end
 
-% Affichage du résultat dans la console
-fprintf('Nombre optimal de synergies pour le sujet %s et la tâche %s : %d (VAF = %.2f%%)\n', ...
-    subjects{subject_idx}, functional_labels{functional_idx}, optimal_synergies, VAF_values(optimal_synergies)*100);
+% Affichage des résultats
+fprintf('Nombre optimal de synergies (VAF global et musculaire) pour le sujet %s et la tâche %s : %d\n', ...
+    subjects{subject_idx}, functional_labels{functional_idx}, optimal_synergies);
 
-% Tracé de la courbe du VAF en fonction du nombre de synergies
+% Tracé du VAF général
 figure;
-plot(1:max_synergies, VAF_values*100, '-o', 'LineWidth', 2);
+plot(1:max_synergies, VAF_values * 100, '-o', 'LineWidth', 2);
 hold on;
-yline(VAF_threshold*100, 'r--', 'Seuil 90%');
+yline(VAF_threshold * 100, 'r--', 'Seuil VAF global 90%');
 xlabel('Nombre de synergies');
 ylabel('VAF (%)');
 title('Courbe de VAF en fonction du nombre de synergies');
 grid on;
+
+% Tracé du VAF musculaire pour chaque muscle
+figure;
+hold on;
+for m = 1:nb_muscles
+    plot(1:max_synergies, VAF_m_values(m, :) * 100, '-o', 'LineWidth', 1.5);
+end
+yline(VAF_m_threshold * 100, 'r--', 'Seuil VAF musculaire 90%');
+xlabel('Nombre de synergies');
+ylabel('VAF (%)');
+title('Courbe de VAF musculaire pour chaque muscle');
+grid on;
+legend(muscle_labels, 'Location', 'best'); % Ajouter une légende avec les noms des muscles
+
 
 %% Visualisation des synergies musculaires extraites
 % Recalcul de la décomposition NNMF avec le nombre optimal de synergies
