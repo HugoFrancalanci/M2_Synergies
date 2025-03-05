@@ -18,15 +18,6 @@ analytic_labels = {'Analytic Task 1', 'Analytic Task 2', 'Analytic Task 3', 'Ana
 nb_functional = length(functional_labels);
 nb_analytic = length(analytic_labels);
 
-% Sélection des tâches analytiques pour chaque muscle
-selected_analytics = zeros(nb_muscles, 1);
-for m = 1:nb_muscles
-    selected_analytics(m) = input(sprintf('Choisissez une tâche analytique (1-4) pour %s: ', muscles{m}));
-end
-
-% Sélection d'une tâche fonctionnelle unique
-selected_functional = input('Choisissez une tâche fonctionnelle (1-4): ');
-
 % Paramètres EMG
 fs = 2000;
 [b, a] = butter(4, [15, 475] / (fs/2), 'bandpass');
@@ -35,30 +26,43 @@ num_points = 1000;
 time_normalized = linspace(0, 1, num_points);
 
 % Initialisation des MVCs
-mvc_flexion = zeros(nb_muscles, 1);
+mvc_flexion = zeros(nb_muscles, nb_analytic);
 all_functional_data = cell(nb_subjects, nb_functional, nb_muscles);
 
-% Traitement des tâches analytiques pour chaque muscle
+% Sélection automatique des tâches analytiques pour chaque muscle
 for subj_idx = 1:nb_subjects
     for m = 1:nb_muscles
-        selected_analytic = selected_analytics(m);
-        fileName_analytic = sprintf(['C:\\Users\\Francalanci Hugo\\Documents\\MATLAB\\Stage Sainte-Justine\\HUG\\Sujets\\%s\\' ...
-            '%s-%s-20240101-PROTOCOL01-ANALYTIC%d-.c3d'], ...
-            subjects{subj_idx}, subjects{subj_idx}, subjects{subj_idx}, selected_analytic);
+        max_activity = 0;
+        best_analytic = 1;
         
-        c3dH_analytic = btkReadAcquisition(fileName_analytic);
-        analogs_analytic = btkGetAnalogs(c3dH_analytic);
-        
-        muscle_name = muscles{m};
-        if isfield(analogs_analytic, muscle_name)
-            signal = analogs_analytic.(muscle_name);
-            signal_filtered = filtfilt(b, a, signal);
-            signal_abs = abs(signal_filtered);
-            emg_rms = sqrt(movmean(signal_abs.^2, rms_window));
-            mvc_flexion(m) = max(emg_rms);
+        for analytic_idx = 1:nb_analytic
+            fileName_analytic = sprintf(['C:\\Users\\Francalanci Hugo\\Documents\\MATLAB\\Stage Sainte-Justine\\HUG\\Sujets\\%s\\' ...
+                '%s-%s-20240101-PROTOCOL01-ANALYTIC%d-.c3d'], ...
+                subjects{subj_idx}, subjects{subj_idx}, subjects{subj_idx}, analytic_idx);
+            
+            c3dH_analytic = btkReadAcquisition(fileName_analytic);
+            analogs_analytic = btkGetAnalogs(c3dH_analytic);
+            
+            muscle_name = muscles{m};
+            if isfield(analogs_analytic, muscle_name)
+                signal = analogs_analytic.(muscle_name);
+                signal_filtered = filtfilt(b, a, signal);
+                signal_abs = abs(signal_filtered);
+                emg_rms = sqrt(movmean(signal_abs.^2, rms_window));
+                mvc_flexion(m, analytic_idx) = max(emg_rms);
+                
+                if mvc_flexion(m, analytic_idx) > max_activity
+                    max_activity = mvc_flexion(m, analytic_idx);
+                    best_analytic = analytic_idx;
+                end
+            end
         end
+        selected_analytics(m) = best_analytic;
     end
 end
+
+% Sélection d'une tâche fonctionnelle unique
+selected_functional = input('Choisissez une tâche fonctionnelle (1-4): ');
 
 % Traitement et normalisation de la tâche fonctionnelle choisie
 for subj_idx = 1:nb_subjects
@@ -80,7 +84,7 @@ for subj_idx = 1:nb_subjects
             signal_filtered = filtfilt(b, a, signal);
             signal_abs = abs(signal_filtered);
             emg_rms = sqrt(movmean(signal_abs.^2, rms_window));
-            emg_normalized = (emg_rms / mvc_flexion(m)) * 100;
+            emg_normalized = (emg_rms / mvc_flexion(m, selected_analytics(m))) * 100;
             interp_signal_functional = interp1(linspace(0, 1, length(signal)), emg_normalized, time_normalized, 'spline');
             all_functional_data{subj_idx, selected_functional, m} = interp_signal_functional;
             plot(time_normalized, interp_signal_functional, 'LineWidth', 1.2);
@@ -92,3 +96,4 @@ for subj_idx = 1:nb_subjects
         end
     end
 end
+
